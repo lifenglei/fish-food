@@ -21,6 +21,19 @@ const fishHighlights = [
 
 const siteBackgroundImage = new URL('./assets/bg.png', import.meta.url).href;
 const siteBackgroundVideo = new URL('./assets/fish.mp4', import.meta.url).href;
+const supportQrImageUrl = 'https://shorturl.at/Dic1W';
+const authorWeChatImageUrl = 'https://shorturl.at/8hstw';
+
+const supportEntries = [
+  {
+    title: '收款二维码',
+    imageUrl: supportQrImageUrl,
+  },
+  {
+    title: '作者微信',
+    imageUrl: authorWeChatImageUrl,
+  },
+];
 
 const App: React.FC = () => {
   const [isNightMode, setIsNightMode] = useState(false);
@@ -31,6 +44,7 @@ const App: React.FC = () => {
   const [fishSpecies, setFishSpecies] = useState<FishSpecies[]>([]);
   const [isLoadingSpecies, setIsLoadingSpecies] = useState(true);
   const [selectedSpeciesId, setSelectedSpeciesId] = useState('');
+  const [isBackgroundMuted, setIsBackgroundMuted] = useState(true);
   const toastTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -107,12 +121,12 @@ const App: React.FC = () => {
     toastTimerRef.current = window.setTimeout(() => {
       setShowToast(false);
       toastTimerRef.current = null;
-    }, 2600);
+    }, 3200);
   };
 
   const handleFeedSubmitted = (feeding: Feeding) => {
     setFeedings((previous: Feeding[]) => [feeding, ...previous.filter((item: Feeding) => item.id !== feeding.id)].slice(0, 40));
-    showNotice(`功德 +${feeding.meritEarned}，鱼群已经收到这次投喂`);
+    showNotice(`投喂成功，功德 +${feeding.meritEarned}，鱼群已经收到这次投喂`);
   };
 
   const handleShare = async () => {
@@ -190,7 +204,7 @@ const App: React.FC = () => {
           }`}
           autoPlay
           loop
-          muted
+          muted={isBackgroundMuted}
           playsInline
           preload="auto"
           src={siteBackgroundVideo}
@@ -276,13 +290,34 @@ const App: React.FC = () => {
       </div>
 
       <div
-        className={`fixed right-4 top-20 z-50 rounded-full border px-4 py-2 text-sm backdrop-blur-md transition-all duration-300 sm:right-6 ${
-          showToast ? 'translate-y-0 opacity-100' : '-translate-y-2 opacity-0 pointer-events-none'
-        } ${isNightMode ? 'border-cyan-900/40 bg-slate-900/90 text-slate-100' : 'border-slate-300 bg-white/90 text-slate-800'}`}
+        className={`fixed left-1/2 top-6 z-50 w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 rounded-[1.5rem] border px-4 py-4 shadow-[0_24px_70px_rgba(15,23,42,0.24)] backdrop-blur-xl transition-all duration-300 sm:top-6 ${
+          showToast ? 'translate-y-0 scale-100 opacity-100' : '-translate-y-3 scale-95 opacity-0 pointer-events-none'
+        } ${isNightMode ? 'border-cyan-300/30 bg-slate-950/92 text-slate-50 shadow-cyan-950/20' : 'border-sky-200 bg-white/96 text-slate-900 shadow-slate-900/10'}`}
         role="status"
         aria-live="polite"
+        aria-atomic="true"
       >
-        {toastMessage}
+        <div className={`absolute inset-x-0 top-0 h-1 rounded-t-[1.5rem] ${isNightMode ? 'bg-cyan-300' : 'bg-sky-400'}`} />
+        <div className="flex items-start gap-3">
+          <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${isNightMode ? 'bg-cyan-400/15 text-cyan-200' : 'bg-sky-100 text-sky-700'}`}>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-4.5 w-4.5"
+            >
+              <path d="M20 6 9 17l-5-5" />
+            </svg>
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className={`text-[10px] tracking-[0.32em] uppercase ${isNightMode ? 'text-cyan-100' : 'text-sky-700'}`}>投喂成功</p>
+            <p className={`mt-1 text-sm leading-6 ${isNightMode ? 'text-slate-100' : 'text-slate-800'}`}>{toastMessage}</p>
+          </div>
+        </div>
       </div>
 
       <main id="main-content" className="relative z-10">
@@ -318,7 +353,7 @@ const App: React.FC = () => {
                   href="#fish-stream"
                   className={`inline-flex min-h-11 items-center justify-center rounded-full border px-6 text-sm font-medium transition duration-200 hover:scale-[1.01] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${secondaryButtonClasses}`}
                 >
-                  查看鱼群
+                  查看功德
                 </a>
               </div>
 
@@ -372,28 +407,12 @@ const App: React.FC = () => {
         </section> */}
 
         <section id="feed" className="mx-auto max-w-6xl px-4 py-8 scroll-mt-24 md:py-12">
-          <div className={`mb-8 rounded-[2rem] border p-5 sm:p-6 ${panelClasses}`}>
-            <p className={`text-xs tracking-[0.32em] uppercase ${mutedTextClasses}`}>投喂面板</p>
-            <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-              <div>
-                <h2 className="font-brand text-3xl md:text-4xl">选择鱼和鱼粮</h2>
-                <p className={`mt-3 max-w-3xl text-sm leading-7 md:text-base ${softTextClasses}`}>
-                  这里可以挑鱼、挑食物、写个署名，然后把功德收进自己的账本里。本站全部收益将用于公益事业。
-                </p>
-              </div>
-              <a
-                href="#fish-stream"
-                className={`inline-flex min-h-11 items-center justify-center rounded-full border px-5 text-sm font-medium transition duration-200 hover:scale-[1.01] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${secondaryButtonClasses}`}
-              >
-                查看投喂流水
-              </a>
-            </div>
-          </div>
 
           <FishFeedPanel
             isNightMode={isNightMode}
             currentMerit={publicMerit}
             onSubmitted={handleFeedSubmitted}
+            onWishInput={() => setIsBackgroundMuted(false)}
             preferredFishTypeId={selectedSpecies?.id}
             preferredSpeciesName={selectedSpecies?.name}
             preferredSpeciesImageUrl={selectedSpecies?.imageUrl}
@@ -401,26 +420,11 @@ const App: React.FC = () => {
         </section>
 
         <section id="fish-stream" className="mx-auto max-w-6xl px-4 py-10 scroll-mt-24 md:py-16">
-          <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-            <div className="max-w-3xl">
-              <p className={`text-xs tracking-[0.32em] uppercase ${mutedTextClasses}`}>最近投喂</p>
-              <h2 className="mt-3 font-brand text-3xl md:text-4xl">最近投喂记录</h2>
-              <p className={`mt-3 max-w-3xl text-sm leading-7 md:text-base ${softTextClasses}`}>
-                最新一条会优先置顶，方便快速扫读最近的愿望、署名和功德变化。
-              </p>
-            </div>
-            <a
-              href="#feed"
-              className={`inline-flex min-h-11 items-center justify-center rounded-full border px-5 text-sm font-medium transition duration-200 hover:scale-[1.01] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${secondaryButtonClasses}`}
-            >
-              继续投喂
-            </a>
-          </div>
 
           <FishStream isNightMode={isNightMode} feedings={feedings} isLoading={isLoadingFeedings} />
         </section>
 
-        <section className="mx-auto max-w-6xl px-4 pb-16">
+        <section className="mx-auto max-w-6xl px-4 pb-10">
           <div className={`rounded-[2rem] border p-6 sm:p-8 ${panelClasses}`}>
             <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
               <div>
@@ -430,6 +434,37 @@ const App: React.FC = () => {
               <p className={`max-w-2xl text-sm leading-7 ${softTextClasses}`}>
                 我们会把鱼群展示、投喂记录和功德累计做成清晰可见的页面信息，方便用户在参与前后都能看见承诺。
               </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-6xl px-4 pb-16">
+          <div className={`rounded-[2rem] border p-6 sm:p-8 ${panelClasses}`}>
+            <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+              <div>
+                <p className={`text-xs tracking-[0.32em] uppercase ${mutedTextClasses}`}>支持入口</p>
+                <h2 className="mt-2 font-brand text-3xl tracking-[-0.03em]">赞赏作者</h2>
+              </div>
+            </div>
+
+            <div className="mt-6 grid gap-4 lg:grid-cols-2">
+              {supportEntries.map((entry) => (
+                <figure
+                  key={entry.title}
+                  className={`overflow-hidden rounded-[1.75rem] border ${isNightMode ? 'border-cyan-900/30 bg-slate-950/38' : 'border-slate-200 bg-white/78'}`}
+                >
+                  <div className="flex h-[min(36rem,70vh)] items-center justify-center bg-white p-4 sm:p-6">
+                    <img
+                      src={entry.imageUrl}
+                      alt={entry.title}
+                      loading="lazy"
+                      decoding="async"
+                      className="max-h-full max-w-full object-contain"
+                    />
+                  </div>
+                  <figcaption className="sr-only">{entry.title}</figcaption>
+                </figure>
+              ))}
             </div>
           </div>
         </section>

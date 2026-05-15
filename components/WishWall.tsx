@@ -6,6 +6,7 @@ interface FishFeedPanelProps {
   isNightMode?: boolean;
   currentMerit: number;
   onSubmitted?: (feeding: Feeding) => void;
+  onWishInput?: () => void;
   preferredFishTypeId?: string;
   preferredSpeciesName?: string;
   preferredSpeciesImageUrl?: string;
@@ -17,6 +18,7 @@ const FishFeedPanel: React.FC<FishFeedPanelProps> = ({
   isNightMode = false,
   currentMerit,
   onSubmitted,
+  onWishInput,
   preferredFishTypeId,
   preferredSpeciesName,
   preferredSpeciesImageUrl,
@@ -179,6 +181,8 @@ const FishFeedPanel: React.FC<FishFeedPanelProps> = ({
         `已投喂成功，${submittedFishName} 收下了 ${submittedFoodLabel}，愿望“${submittedWishDescription}”已记录，功德 +${submittedMerit}，你当前累计 ${submittedTotalMerit}。`,
       );
       onSubmitted?.(result);
+      setFeederName('');
+      setWishDescription('');
       setSelectedFoodSlug(DEFAULT_FOOD_SLUG);
 
       successTimerRef.current = window.setTimeout(() => {
@@ -430,6 +434,7 @@ const FishFeedPanel: React.FC<FishFeedPanelProps> = ({
                   value={wishDescription}
                   onChange={(event) => {
                     setWishDescription(event.target.value);
+                    onWishInput?.();
                     if (error) {
                       setError('');
                     }

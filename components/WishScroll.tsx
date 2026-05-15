@@ -118,7 +118,7 @@ const FishStream: React.FC<FishStreamProps> = ({ isNightMode = false, feedings, 
                   {timeLabel}
                 </span>
                 <span className={`rounded-full border px-3 py-1 text-[10px] tracking-[0.22em] uppercase ${theme.latestBadge}`}>
-                  {isLatest ? '最新记录' : '投喂记录'}
+                  {isLatest ? '最新记录' : '功德记录'}
                 </span>
               </div>
             </div>
@@ -228,7 +228,7 @@ const FishStream: React.FC<FishStreamProps> = ({ isNightMode = false, feedings, 
           <span className={`h-2.5 w-2.5 rounded-full ${isNightMode ? 'bg-cyan-300/80' : 'bg-sky-400'}`} />
         </div>
         <p className={`mt-5 font-brand text-2xl ${theme.soft}`}>还没有投喂记录</p>
-        <p className={`mt-3 text-sm leading-7 ${theme.muted}`}>先去投喂一口，最新愿望就会出现在这里。</p>
+        <p className={`mt-3 text-sm leading-7 ${theme.muted}`}>先去投喂一口，记录就会出现在这里。</p>
       </div>
     );
   }
@@ -244,9 +244,9 @@ const FishStream: React.FC<FishStreamProps> = ({ isNightMode = false, feedings, 
               <span>{feedCountLabel}</span>
             </div>
 
-            <h3 className="mt-4 font-brand text-3xl tracking-[-0.04em] sm:text-4xl">最近投喂记录</h3>
+            <h3 className="mt-4 font-brand text-3xl tracking-[-0.04em] sm:text-4xl">功德记录</h3>
             <p className={`mt-3 max-w-2xl text-sm leading-7 sm:text-base ${theme.soft}`}>
-              按时间倒序展示最近的愿望和功德变化，最新记录会显示在最上面。
+              按时间倒序展示最近的记录，最新记录会显示在最上面。
             </p>
           </div>
 
