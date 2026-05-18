@@ -6,7 +6,8 @@ interface FishFeedPanelProps {
   isNightMode?: boolean;
   currentMerit: number;
   onSubmitted?: (feeding: Feeding) => void;
-  onWishInput?: () => void;
+  onWishDescriptionChange?: (value: string) => void;
+  feedSuccessResetDelayMs?: number;
   preferredFishTypeId?: string;
   preferredSpeciesName?: string;
   preferredSpeciesImageUrl?: string;
@@ -18,7 +19,8 @@ const FishFeedPanel: React.FC<FishFeedPanelProps> = ({
   isNightMode = false,
   currentMerit,
   onSubmitted,
-  onWishInput,
+  onWishDescriptionChange,
+  feedSuccessResetDelayMs = 8400,
   preferredFishTypeId,
   preferredSpeciesName,
   preferredSpeciesImageUrl,
@@ -33,6 +35,21 @@ const FishFeedPanel: React.FC<FishFeedPanelProps> = ({
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const successTimerRef = useRef<number | null>(null);
+  const resetTimerRef = useRef<number | null>(null);
+
+  const scheduleSuccessReset = (delayMs: number) => {
+    if (resetTimerRef.current !== null) {
+      window.clearTimeout(resetTimerRef.current);
+    }
+
+    resetTimerRef.current = window.setTimeout(() => {
+      setFeederName('');
+      setWishDescription('');
+      onWishDescriptionChange?.('');
+      setSelectedFoodSlug(DEFAULT_FOOD_SLUG);
+      resetTimerRef.current = null;
+    }, delayMs);
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -52,6 +69,10 @@ const FishFeedPanel: React.FC<FishFeedPanelProps> = ({
       if (successTimerRef.current !== null) {
         window.clearTimeout(successTimerRef.current);
         successTimerRef.current = null;
+      }
+      if (resetTimerRef.current !== null) {
+        window.clearTimeout(resetTimerRef.current);
+        resetTimerRef.current = null;
       }
     };
   }, []);
@@ -181,9 +202,7 @@ const FishFeedPanel: React.FC<FishFeedPanelProps> = ({
         `已投喂成功，${submittedFishName} 收下了 ${submittedFoodLabel}，愿望“${submittedWishDescription}”已记录，功德 +${submittedMerit}，你当前累计 ${submittedTotalMerit}。`,
       );
       onSubmitted?.(result);
-      setFeederName('');
-      setWishDescription('');
-      setSelectedFoodSlug(DEFAULT_FOOD_SLUG);
+      scheduleSuccessReset(feedSuccessResetDelayMs);
 
       successTimerRef.current = window.setTimeout(() => {
         setSuccessMessage('');
@@ -434,7 +453,7 @@ const FishFeedPanel: React.FC<FishFeedPanelProps> = ({
                   value={wishDescription}
                   onChange={(event) => {
                     setWishDescription(event.target.value);
-                    onWishInput?.();
+                    onWishDescriptionChange?.(event.target.value);
                     if (error) {
                       setError('');
                     }

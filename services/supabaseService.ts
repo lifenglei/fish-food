@@ -136,12 +136,33 @@ export const fishService = {
     }
   },
 
-  async getRecentFeedings(limit = 40): Promise<Feeding[]> {
+  async getRecentFeedings(params?: {
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    pageSize?: number;
+  }): Promise<{ items: Feeding[]; total: number; page: number; pageSize: number }> {
     try {
-      return await requestJson<Feeding[]>(`/feedings?limit=${encodeURIComponent(String(limit))}`);
+      const searchParams = new URLSearchParams();
+      if (params?.startDate) searchParams.set('startDate', params.startDate);
+      if (params?.endDate) searchParams.set('endDate', params.endDate);
+      if (params?.page) searchParams.set('page', String(params.page));
+      if (params?.pageSize) searchParams.set('pageSize', String(params.pageSize));
+      const qs = searchParams.toString();
+      return await requestJson(`/feedings${qs ? `?${qs}` : ''}`);
     } catch (error) {
       console.error('Error fetching feedings:', error);
-      return [];
+      return { items: [], total: 0, page: 1, pageSize: 12 };
+    }
+  },
+
+  async getTotalMerit(): Promise<number> {
+    try {
+      const data = await requestJson<{ totalMerit: number }>('/feedings/total-merit');
+      return data.totalMerit ?? 0;
+    } catch (error) {
+      console.error('Error fetching total merit:', error);
+      return 0;
     }
   },
 

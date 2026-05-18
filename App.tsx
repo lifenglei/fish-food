@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Feeding, FishSpecies, fishService } from './services/supabaseService';
 import AmbientBackground from './components/AmbientBackground';
 import FishFeedPanel from './components/WishWall';
@@ -21,8 +21,10 @@ const fishHighlights = [
 
 const siteBackgroundImage = new URL('./assets/bg.png', import.meta.url).href;
 const siteBackgroundVideo = new URL('./assets/fish.mp4', import.meta.url).href;
+const siteBackgroundFoodVideo = new URL('./assets/food.mp4', import.meta.url).href;
 const supportQrImageUrl = 'https://shorturl.at/Dic1W';
 const authorWeChatImageUrl = 'https://shorturl.at/8hstw';
+const feedSuccessVideoDurationMs = 8500;
 
 const supportEntries = [
   {
@@ -39,12 +41,14 @@ const App: React.FC = () => {
   const [isNightMode, setIsNightMode] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
-  const [feedings, setFeedings] = useState<Feeding[]>([]);
-  const [isLoadingFeedings, setIsLoadingFeedings] = useState(true);
+  const [totalMerit, setTotalMerit] = useState(0);
+  const [streamRefreshKey, setStreamRefreshKey] = useState(0);
   const [fishSpecies, setFishSpecies] = useState<FishSpecies[]>([]);
   const [isLoadingSpecies, setIsLoadingSpecies] = useState(true);
   const [selectedSpeciesId, setSelectedSpeciesId] = useState('');
+  const [backgroundVideoSrc, setBackgroundVideoSrc] = useState(siteBackgroundVideo);
   const [isBackgroundMuted, setIsBackgroundMuted] = useState(true);
+  const backgroundVideoTimerRef = useRef<number | null>(null);
   const toastTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -84,27 +88,12 @@ const App: React.FC = () => {
   );
   const fishSpeciesCountLabel = isLoadingSpecies ? '加载中' : `${orderedFishSpecies.length} 种`;
   const selectedSpecies = orderedFishSpecies.find((species) => species.id === selectedSpeciesId) || orderedFishSpecies[0];
-  const publicMerit = useMemo(() => feedings.reduce((total, feeding) => total + feeding.meritEarned, 0), [feedings]);
 
   useEffect(() => {
-    let isMounted = true;
-
-    fishService.getRecentFeedings().then((recentFeedings) => {
-      if (!isMounted) {
-        return;
+    return () => {
+      if (backgroundVideoTimerRef.current !== null) {
+        window.clearTimeout(backgroundVideoTimerRef.current);
       }
-
-      setFeedings(recentFeedings);
-      setIsLoadingFeedings(false);
-    });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    return () => {
       if (toastTimerRef.current !== null) {
         window.clearTimeout(toastTimerRef.current);
       }
@@ -124,8 +113,21 @@ const App: React.FC = () => {
     }, 3200);
   };
 
+  const handleTotalMeritChange = useCallback((merit: number) => {
+    setTotalMerit(merit);
+  }, []);
+
   const handleFeedSubmitted = (feeding: Feeding) => {
-    setFeedings((previous: Feeding[]) => [feeding, ...previous.filter((item: Feeding) => item.id !== feeding.id)].slice(0, 40));
+    setTotalMerit((prev) => prev + feeding.meritEarned);
+    setStreamRefreshKey((prev) => prev + 1);
+    setBackgroundVideoSrc(siteBackgroundFoodVideo);
+    if (backgroundVideoTimerRef.current !== null) {
+      window.clearTimeout(backgroundVideoTimerRef.current);
+    }
+    backgroundVideoTimerRef.current = window.setTimeout(() => {
+      setBackgroundVideoSrc(siteBackgroundVideo);
+      backgroundVideoTimerRef.current = null;
+    }, feedSuccessVideoDurationMs);
     showNotice(`投喂成功，功德 +${feeding.meritEarned}，鱼群已经收到这次投喂`);
   };
 
@@ -199,6 +201,7 @@ const App: React.FC = () => {
           style={{ backgroundImage: `url(${siteBackgroundImage})` }}
         />
         <video
+          key={backgroundVideoSrc}
           className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 mix-blend-screen ${
             isNightMode ? 'opacity-12' : 'opacity-18'
           }`}
@@ -207,7 +210,7 @@ const App: React.FC = () => {
           muted={isBackgroundMuted}
           playsInline
           preload="auto"
-          src={siteBackgroundVideo}
+          src={backgroundVideoSrc}
         />
         <div className={`absolute inset-0 transition-colors duration-700 ${isNightMode ? 'bg-slate-950/28' : 'bg-white/16'}`} />
         <div
@@ -358,7 +361,7 @@ const App: React.FC = () => {
               </div>
 
               <div className={`mt-6 inline-flex rounded-full border px-4 py-2 text-xs tracking-[0.28em] uppercase ${panelClasses}`}>
-                当前累计功德 +{publicMerit}
+                当前累计功德 +{totalMerit}
               </div>
 
               <p className={`mt-4 max-w-2xl text-sm leading-7 ${mutedTextClasses}`}>
@@ -397,7 +400,7 @@ const App: React.FC = () => {
             </div>
             <div>
               <p className={`text-xs tracking-[0.32em] uppercase ${mutedTextClasses}`}>功德累计</p>
-              <p className="mt-2 font-brand text-3xl tracking-[-0.03em]">+{publicMerit}</p>
+              <p className="mt-2 font-brand text-3xl tracking-[-0.03em]">+{totalMerit}</p>
             </div>
             <div>
               <p className={`text-xs tracking-[0.32em] uppercase ${mutedTextClasses}`}>公益声明</p>
@@ -410,9 +413,10 @@ const App: React.FC = () => {
 
           <FishFeedPanel
             isNightMode={isNightMode}
-            currentMerit={publicMerit}
+            currentMerit={totalMerit}
             onSubmitted={handleFeedSubmitted}
-            onWishInput={() => setIsBackgroundMuted(false)}
+            onWishDescriptionChange={(value) => setIsBackgroundMuted(value.trim().length === 0)}
+            feedSuccessResetDelayMs={feedSuccessVideoDurationMs}
             preferredFishTypeId={selectedSpecies?.id}
             preferredSpeciesName={selectedSpecies?.name}
             preferredSpeciesImageUrl={selectedSpecies?.imageUrl}
@@ -420,50 +424,59 @@ const App: React.FC = () => {
         </section>
 
         <section id="fish-stream" className="mx-auto max-w-6xl px-4 py-10 scroll-mt-24 md:py-16">
-
-          <FishStream isNightMode={isNightMode} feedings={feedings} isLoading={isLoadingFeedings} />
-        </section>
-
-        <section className="mx-auto max-w-6xl px-4 pb-10">
-          <div className={`rounded-[2rem] border p-6 sm:p-8 ${panelClasses}`}>
-            <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-              <div>
-                <p className={`text-xs tracking-[0.32em] uppercase ${mutedTextClasses}`}>公益说明</p>
-                <p className="mt-2 font-brand text-2xl">本站全部收益将用于公益事业</p>
-              </div>
-              <p className={`max-w-2xl text-sm leading-7 ${softTextClasses}`}>
-                我们会把鱼群展示、投喂记录和功德累计做成清晰可见的页面信息，方便用户在参与前后都能看见承诺。
-              </p>
-            </div>
-          </div>
+          <FishStream isNightMode={isNightMode} refreshKey={streamRefreshKey} onTotalMeritChange={handleTotalMeritChange} />
         </section>
 
         <section className="mx-auto max-w-6xl px-4 pb-16">
-          <div className={`rounded-[2rem] border p-6 sm:p-8 ${panelClasses}`}>
-            <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-              <div>
-                <p className={`text-xs tracking-[0.32em] uppercase ${mutedTextClasses}`}>支持入口</p>
-                <h2 className="mt-2 font-brand text-3xl tracking-[-0.03em]">赞赏作者</h2>
-              </div>
+          <div className={`relative overflow-hidden rounded-[2rem] border p-6 sm:p-8 ${panelClasses}`}>
+            {/* Ambient decoration */}
+            <div className={`pointer-events-none absolute -right-20 -top-20 h-60 w-60 rounded-full blur-3xl ${isNightMode ? 'bg-cyan-500/[0.06]' : 'bg-sky-200/30'}`} />
+            <div className={`pointer-events-none absolute -bottom-16 -left-16 h-48 w-48 rounded-full blur-3xl ${isNightMode ? 'bg-emerald-500/[0.04]' : 'bg-emerald-200/20'}`} />
+
+            {/* Header */}
+            <div className="relative">
+              <p className={`text-xs tracking-[0.32em] uppercase ${mutedTextClasses}`}>公益承诺 · 支持入口</p>
+              <h2 className="mt-3 font-brand text-3xl tracking-[-0.03em] sm:text-4xl">本站全部收益将用于公益事业</h2>
             </div>
 
-            <div className="mt-6 grid gap-4 lg:grid-cols-2">
+            {/* Trust points */}
+            <div className={`relative mt-6 grid gap-3 sm:grid-cols-3`}>
+              {[
+                { label: '收益透明', desc: '所有收益来源与金额定期公示' },
+                { label: '全额捐赠', desc: '扣除运营成本后全部用于公益' },
+                { label: '公开记录', desc: '每笔投喂和功德都可追溯查验' },
+              ].map((item) => (
+                <div key={item.label} className={`rounded-xl border px-4 py-3 ${isNightMode ? 'border-white/[0.06] bg-white/[0.03]' : 'border-slate-200/60 bg-slate-50/50'}`}>
+                  <p className={`text-xs font-medium tracking-wide ${isNightMode ? 'text-cyan-300' : 'text-sky-600'}`}>{item.label}</p>
+                  <p className={`mt-1 text-sm leading-6 ${mutedTextClasses}`}>{item.desc}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Divider */}
+            <div className={`relative my-8 flex items-center gap-3`}>
+              <span className={`h-px flex-1 ${isNightMode ? 'bg-white/[0.06]' : 'bg-slate-200/60'}`} />
+              <span className={`text-[10px] font-medium tracking-[0.2em] uppercase ${mutedTextClasses}`}>赞赏支持</span>
+              <span className={`h-px flex-1 ${isNightMode ? 'bg-white/[0.06]' : 'bg-slate-200/60'}`} />
+            </div>
+
+            {/* QR codes */}
+            <div className="relative grid gap-4 sm:grid-cols-2">
               {supportEntries.map((entry) => (
-                <figure
-                  key={entry.title}
-                  className={`overflow-hidden rounded-[1.75rem] border ${isNightMode ? 'border-cyan-900/30 bg-slate-950/38' : 'border-slate-200 bg-white/78'}`}
-                >
-                  <div className="flex h-[min(36rem,70vh)] items-center justify-center bg-white p-4 sm:p-6">
+                <div key={entry.title} className={`group overflow-hidden rounded-2xl border transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg ${isNightMode ? 'border-white/[0.06] bg-white/[0.03] hover:border-white/[0.1]' : 'border-slate-200/60 bg-white/60 hover:border-slate-200 hover:bg-white'}`}>
+                  <div className="flex items-center justify-center bg-white p-5 sm:p-6">
                     <img
                       src={entry.imageUrl}
                       alt={entry.title}
                       loading="lazy"
                       decoding="async"
-                      className="max-h-full max-w-full object-contain"
+                      className="h-auto w-full max-w-[16rem] object-contain"
                     />
                   </div>
-                  <figcaption className="sr-only">{entry.title}</figcaption>
-                </figure>
+                  <div className={`border-t px-4 py-2.5 text-center ${isNightMode ? 'border-white/[0.06]' : 'border-slate-200/60'}`}>
+                    <p className={`text-xs font-medium tracking-wide ${mutedTextClasses}`}>{entry.title}</p>
+                  </div>
+                </div>
               ))}
             </div>
           </div>

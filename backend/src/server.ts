@@ -2,7 +2,7 @@ import express, { type NextFunction, type Request, type Response } from 'express
 import cors from 'cors';
 import morgan from 'morgan';
 import { ZodError, z } from 'zod';
-import { addFeeding, getFishCatalog, getFishSpecies, getRecentFeedings } from './services/fishService.js';
+import { addFeeding, getFishCatalog, getFishSpecies, getRecentFeedings, getTotalMerit } from './services/fishService.js';
 
 const PORT = Number(process.env.PORT ?? 4000);
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN ?? '';
@@ -25,7 +25,12 @@ app.use(
 app.use(express.json({ limit: '1mb' }));
 app.use(morgan('dev'));
 
-const limitSchema = z.coerce.number().int().min(1).max(100).default(40);
+const feedingsQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(50).default(12),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+});
 const feedInputSchema = z.object({
   fishId: z.string().uuid(),
   foodSlug: z.string().trim().min(1),
@@ -65,9 +70,18 @@ app.get(
 app.get(
   '/api/feedings',
   asyncRoute(async (req, res) => {
-    const limit = limitSchema.parse(req.query.limit ?? 40);
-    const feedings = await getRecentFeedings(limit);
-    res.json(feedings);
+    const { page, pageSize, startDate, endDate } = feedingsQuerySchema.parse(req.query);
+    const offset = (page - 1) * pageSize;
+    const result = await getRecentFeedings({ limit: pageSize, offset, startDate, endDate });
+    res.json({ ...result, page, pageSize });
+  }),
+);
+
+app.get(
+  '/api/feedings/total-merit',
+  asyncRoute(async (_req, res) => {
+    const totalMerit = await getTotalMerit();
+    res.json({ totalMerit });
   }),
 );
 

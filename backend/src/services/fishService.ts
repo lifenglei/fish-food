@@ -175,18 +175,48 @@ export async function getFishCatalog(): Promise<Fish[]> {
   return fetchFishCatalog();
 }
 
-export async function getRecentFeedings(limit = 40): Promise<Feeding[]> {
-  const { data, error } = await supabase
-    .from(WISHES_TABLE)
-    .select('*')
+export async function getRecentFeedings(params?: {
+  limit?: number;
+  offset?: number;
+  startDate?: string;
+  endDate?: string;
+}): Promise<{ items: Feeding[]; total: number }> {
+  const limit = params?.limit ?? 12;
+  const offset = params?.offset ?? 0;
+
+  let query = supabase.from(WISHES_TABLE).select('*', { count: 'exact' });
+
+  if (params?.startDate) {
+    query = query.gte('created_at', params.startDate);
+  }
+  if (params?.endDate) {
+    query = query.lte('created_at', params.endDate);
+  }
+
+  const { data, error, count } = await query
     .order('created_at', { ascending: false })
-    .limit(limit);
+    .range(offset, offset + limit - 1);
 
   if (error) {
     throw error;
   }
 
-  return (data ?? []).map((row) => mapFeedingRow(row as FeedingRow));
+  return {
+    items: (data ?? []).map((row) => mapFeedingRow(row as FeedingRow)),
+    total: count ?? 0,
+  };
+}
+
+export async function getTotalMerit(): Promise<number> {
+  const { data, error } = await supabase
+    .from(WISHES_TABLE)
+    .select('merit_earned');
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).reduce((sum, row) => sum + Number(row.merit_earned ?? 0), 0);
 }
 
 export async function addFeeding(input: {
